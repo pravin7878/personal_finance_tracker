@@ -3,6 +3,17 @@ const express = require("express");
 const connectToDB = require("./src/config/db");
 const app = express()
 const port = process.env.PORT || 3000
+const cors = require('cors');
+
+
+// Middleware
+app.use(express.json()); 
+app.use(cors());
+
+
+// Routes
+const transactions = require('./src/routes/transactions.js');
+app.use('/api/transactions', transactions);
 
 app.get("/" , (req,res)=>{
     res.send("wellcome to server")
