@@ -1,118 +1,67 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const Transaction = require('../models/transaction.js');
+const Transaction = require("../models/transaction.js");
+const { protect } = require("../middelware/authMiddleware.js");
 
-// @route   GET /api/transactions
-// @desc    Get all transactions
-router.get('/', async (req, res) => {
-  try {
-    const transactions = await Transaction.find();
-    return res.status(200).json({
-      success: true,
-      count: transactions.length,
-      data: transactions
-    });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: 'Server Error'
-    });
-  }
+// Get all transactions for logged-in user
+router.get("/", protect, async (req, res) => {
+  const transactions = await Transaction.find({ userId: req.user._id });
+  res.json(transactions);
 });
 
-// @route   POST /api/transactions
-// @desc    Add new transaction
-router.post('/add', async (req, res) => {
-  try {
-    const { title, amount, category } = req.body;
-    const newTransaction = new Transaction({ title, amount, category });
-    await newTransaction.save();
-    return res.status(201).json({
-      success: true,
-      data: newTransaction
-    });
-  } catch (err) {
-    if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map(val => val.message);
-      return res.status(400).json({
-        success: false,
-        error: messages
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        error: 'Server Error'
-      });
-    }
-  }
+// Get single transaction
+router.get("/:id", protect, async (req, res) => {
+  const transaction = await Transaction.findOne({ _id: req.params.id, userId: req.user._id });
+  if (!transaction) return res.status(404).json({ message: "Transaction not found" });
+  res.json(transaction);
 });
 
-// @route   PUT /api/transactions/:id
-// @desc    Update a transaction by ID
-router.put('/:id', async (req, res) => {
-  try {
-    const { title, amount, category } = req.body;
-    const transaction = await Transaction.findById(req.params.id);
+// Add transaction
+router.post("/", protect, async (req, res) => {
+  const { title, amount, type, category } = req.body;
 
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        error: 'No transaction found'
-      });
-    }
+  const finalAmount = type === "debit" ? -Math.abs(amount) : Math.abs(amount);
 
-    transaction.title = title || transaction.title;
-    transaction.amount = amount || transaction.amount;
-    transaction.category = category || transaction.category;
-    transaction.date = Date.now();
+  const newTransaction = await Transaction.create({
+    title,
+    amount: finalAmount,
+    type,
+    category,
+    userId: req.user._id
+  });
 
-    const updatedTransaction = await transaction.save();
-
-    return res.status(200).json({
-      success: true,
-      data: updatedTransaction
-    });
-  } catch (err) {
-    if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map(val => val.message);
-      return res.status(400).json({
-        success: false,
-        error: messages
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        error: 'Server Error'
-      });
-    }
-  }
+  res.status(201).json(newTransaction);
 });
 
-// @route   DELETE /api/transactions/:id
-// @desc    Delete transaction by ID
-router.delete('/:id', async (req, res) => {
-  try {
-    const transaction = await Transaction.findById(req.params.id);
+// Update transaction
+router.put("/:id", protect, async (req, res) => {
+  const transaction = await Transaction.findOne({ _id: req.params.id, userId: req.user._id });
+  if (!transaction) return res.status(404).json({ message: "Transaction not found" });
 
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        error: 'No transaction found'
-      });
-    }
+  const { title, amount, type, category } = req.body;
+  transaction.title = title || transaction.title;
+  transaction.amount = type === "debit" ? -Math.abs(amount) : Math.abs(amount);
+  transaction.type = type || transaction.type;
+  transaction.category = category || transaction.category;
 
-    await transaction.deleteOne();
+  const updated = await transaction.save();
+  res.json(updated);
+});
 
-    return res.status(200).json({
-      success: true,
-      data: {}
-    });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: 'Server Error'
-    });
-  }
+// Delete transaction
+router.delete("/:id", protect, async (req, res) => {
+  const transaction = await Transaction.findOne({ _id: req.params.id, userId: req.user._id });
+  if (!transaction) return res.status(404).json({ message: "Transaction not found" });
+
+  await transaction.deleteOne();
+  res.json({ message: "Transaction removed" });
+});
+
+// Get balance
+router.get("/balance/total", protect, async (req, res) => {
+  const transactions = await Transaction.find({ userId: req.user._id });
+  const balance = transactions.reduce((acc, t) => acc + t.amount, 0);
+  res.json({ balance });
 });
 
 module.exports = router;

@@ -3,11 +3,11 @@ import HomePage from './pages/HomePage';
 import AddTransactionPage from './pages/AddTransactionPage';
 import EditTransactionPage from './pages/EditTransactionPage';
 import Header from './components/Header';
-import './App.css';
+import './index.css'; // Keep this for Tailwind directives
 
 function App() {
   return (
-    <div className="container">
+    <div className="container mx-auto p-4 max-w-2xl">
       <Header />
       <Routes>
         <Route path="/" element={<HomePage />} />
