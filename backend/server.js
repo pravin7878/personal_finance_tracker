@@ -8,11 +8,11 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors("*"));
 
 // Routes
-app.use("/api/auth", require("./src/routes/auth"));
-app.use("/api/transactions", require("./src/routes/transactions"));
+app.use("/api/auth", require("./src/routes/auth.js"));
+app.use("/api/transactions", require("./src/routes/transactions.js"));
 
 // Health check
 app.get("/", (req, res) => {
