@@ -9,7 +9,7 @@ export default function AddTransaction() {
   const handleCreate = async (payload) => {
     await createTransaction(payload);
     // after success, go to dashboard
-    navigate('/');
+    navigate('/dashboard');
   };
 
   return (
